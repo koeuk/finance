@@ -1,0 +1,176 @@
+<?php
+
+namespace App\Http\Requests;
+
+use App\Enums\CategoryColor;
+use App\Enums\Currency;
+use App\Models\AppSetting;
+use App\Models\Category;
+use App\Support\TranslatableInput;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+
+class ExpenseRequest extends FormRequest
+{
+    /**
+     * Authorization is handled by ExpensePolicy via the controller.
+     */
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * One Item box, not one per language — see TranslatableInput. The value is
+     * stored under the fallback locale.
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->merge(['item' => TranslatableInput::toString($this->input('item'))]);
+    }
+
+    public function rules(): array
+    {
+        return [
+            'item' => ['required', 'string', 'max:255'],
+            'price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
+            // What the *entered* price is denominated in. Absent means USD, so
+            // any existing client that never sends it keeps working unchanged.
+            'currency' => ['nullable', Rule::enum(Currency::class)],
+            'spent_on' => ['required', 'date', 'before_or_equal:today'],
+
+            /*
+             * Exactly one of these. The dialog either picks an existing category
+             * or names a new one inline, so requiring the uuid outright would
+             * reject every inline creation.
+             */
+            'category_uuid' => [
+                Rule::requiredIf(fn () => blank($this->input('new_category'))),
+                'nullable',
+                'uuid',
+                'exists:categories,uuid',
+            ],
+            'new_category' => [
+                'nullable',
+                'string',
+                'max:255',
+                // Case-insensitive: "coffee" must not create a second Coffee.
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    if (blank($value)) {
+                        return;
+                    }
+
+                    $exists = Category::query()
+                        ->whereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(name, "$.en"))) = ?', [mb_strtolower(trim($value))])
+                        ->exists();
+
+                    if ($exists) {
+                        $fail(__('A category called ":name" already exists — pick it from the list.', ['name' => trim($value)]));
+                    }
+                },
+            ],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'item.required' => __('The item is required.'),
+            'spent_on.before_or_equal' => __('You cannot log an expense in the future.'),
+            'category_uuid.required' => __('Please pick a category.'),
+            'category_uuid.exists' => __('That category no longer exists.'),
+        ];
+    }
+
+    public function attributes(): array
+    {
+        return [
+            'item' => __('item'),
+            'new_category' => __('category'),
+        ];
+    }
+
+    /**
+     * The frontend only ever sees UUIDs, so swap the category UUID for the
+     * internal foreign key before the model is written.
+     *
+     * @return array<string, mixed>
+     */
+    public function expenseAttributes(): array
+    {
+        $data = $this->validated();
+
+        $data['category_id'] = $this->resolveCategoryId();
+        unset($data['category_uuid'], $data['new_category']);
+
+        // Every stored price is USD — see App\Enums\Currency. The currency is a
+        // property of what was typed, not of the expense, so it is consumed here
+        // rather than persisted.
+        $currency = Currency::tryFrom((string) $this->input('currency')) ?? Currency::Usd;
+        $data['price'] = $currency->toUsd((float) $data['price'], AppSetting::current()->khrPerUsd());
+        unset($data['currency']);
+
+        // Written under the fallback locale — the column is still translatable
+        // JSON, the app just no longer authors a second language for it.
+        $data['item'] = TranslatableInput::toTranslations($data['item']);
+
+        return $data;
+    }
+
+    /**
+     * An inline name creates the category; otherwise the picked uuid is resolved.
+     *
+     * The lookup is case-insensitive, matching CategoryRequest's uniqueness rule,
+     * so "coffee" finds "Coffee" instead of creating a second row beside it.
+     *
+     * Two people naming the same category at the same instant can still both
+     * insert: there is no unique index on the name to make this atomic, and a
+     * firstOrCreate would not add one. That is a narrow race with a visible,
+     * mergeable outcome — unlike the silent mismatch this method used to have
+     * with the Categories page, which produced the same duplicate from ordinary
+     * sequential use.
+     */
+    private function resolveCategoryId(): int
+    {
+        $name = trim((string) $this->input('new_category'));
+
+        if (blank($name)) {
+            $id = Category::where('uuid', $this->validated('category_uuid'))->value('id');
+
+            /*
+             * The uuid passed `exists` a moment ago, but that was a separate
+             * query and the row can be gone by now. (int) null is 0, which is no
+             * category at all: the API surfaced that as a 500 from the foreign
+             * key where its own docblock promises a 422, and the web form turned
+             * it into a flash message built from the SQL error. BudgetRequest
+             * already guards its half of this; this is the sibling it was
+             * fixed without.
+             */
+            if ($id === null) {
+                throw ValidationException::withMessages([
+                    'category_uuid' => __('That category no longer exists.'),
+                ]);
+            }
+
+            return (int) $id;
+        }
+
+        $existing = Category::query()
+            ->whereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(name, "$.en"))) = ?', [mb_strtolower($name)])
+            ->value('id');
+
+        if ($existing) {
+            return (int) $existing;
+        }
+
+        $category = new Category;
+        // Only English: whoever typed it was logging an expense, not translating.
+        // The Khmer name can be filled in later on the Categories page.
+        $category->setTranslations('name', ['en' => $name]);
+        $category->color = CategoryColor::Slate;
+        $category->save();
+
+        return (int) $category->id;
+    }
+}

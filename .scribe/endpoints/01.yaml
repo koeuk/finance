@@ -1,0 +1,166 @@
+name: Auth
+description: |-
+
+  The same OTP reset the web login uses, for API clients: request a six-digit
+  code by email, then trade code + new password for a reset. All the limits
+  live in one place (PasswordOtp), so the two doors cannot drift apart —
+  five guesses, ten minutes, one use, shared between web and API.
+endpoints:
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/v1/forgot-password
+    metadata:
+      custom: []
+      groupName: Auth
+      groupDescription: |-
+
+        The same OTP reset the web login uses, for API clients: request a six-digit
+        code by email, then trade code + new password for a reset. All the limits
+        live in one place (PasswordOtp), so the two doors cannot drift apart —
+        five guesses, ten minutes, one use, shared between web and API.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Request a reset code'
+      description: |-
+        Emails a six-digit code to the account. One code per minute per email;
+        a fresh request inside that window is a 422, not a second email.
+      authenticated: false
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      email:
+        custom: []
+        name: email
+        description: ''
+        required: true
+        example: koeukkos@gmail.com
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      email: koeukkos@gmail.com
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 200
+        content: '{"message": "We emailed you a 6-digit code."}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 422
+        content: '{"message": "We can''t find a user with that email address.", "errors": {"email": ["We can''t find a user with that email address."]}}'
+        headers: []
+        description: 'unknown email, or asked again too soon'
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/v1/reset-password
+    metadata:
+      custom: []
+      groupName: Auth
+      groupDescription: |-
+
+        The same OTP reset the web login uses, for API clients: request a six-digit
+        code by email, then trade code + new password for a reset. All the limits
+        live in one place (PasswordOtp), so the two doors cannot drift apart —
+        five guesses, ten minutes, one use, shared between web and API.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Reset with the code'
+      description: ''
+      authenticated: false
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      email:
+        custom: []
+        name: email
+        description: ''
+        required: true
+        example: koeukkos@gmail.com
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      code:
+        custom: []
+        name: code
+        description: 'The six digits from the email.'
+        required: true
+        example: '483291'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      password:
+        custom: []
+        name: password
+        description: ''
+        required: true
+        example: a-much-better-one
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      password_confirmation:
+        custom: []
+        name: password_confirmation
+        description: ''
+        required: true
+        example: a-much-better-one
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      email: koeukkos@gmail.com
+      code: '483291'
+      password: a-much-better-one
+      password_confirmation: a-much-better-one
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 200
+        content: '{"message": "Your password has been reset."}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 422
+        content: '{"message": "That code is not valid.", "errors": {"code": ["That code is not valid. It may have expired — you can request a new one."]}}'
+        headers: []
+        description: 'wrong, expired or over-guessed code'
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null

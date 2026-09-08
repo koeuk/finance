@@ -1,0 +1,79 @@
+# SpendLog — one-time VPS setup (Ubuntu/Debian)
+
+Everything after this is handled by the Deploy workflow
+(`.github/workflows/deploy.yml`) — Actions tab → Deploy → Run workflow.
+
+## 0. AWS EC2 notes
+
+- Instance: Ubuntu 24.04 LTS AMI, t3.small or larger (t3.micro works but
+  composer/npm get slow). Attach an Elastic IP so the address survives restarts.
+- Security group inbound rules: 22 (SSH, your IP only), 80 and 443 (anywhere).
+- Log in with the instance key pair: `ssh -i your-key.pem ubuntu@ELASTIC_IP`,
+  then follow the steps below as that user.
+- For GitHub-triggered deploys, add the repo secrets listed in
+  `.github/workflows/deploy.yml` (host, user, private key).
+
+## 1. Packages
+
+```bash
+sudo add-apt-repository ppa:ondrej/php -y && sudo apt update
+sudo apt install -y nginx mysql-server git unzip \
+  php8.4-fpm php8.4-mysql php8.4-mbstring php8.4-xml php8.4-curl \
+  php8.4-zip php8.4-gd php8.4-bcmath php8.4-intl
+# Composer
+curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+# Node 22
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt install -y nodejs
+```
+
+## 2. Database
+
+```bash
+sudo mysql
+```
+```sql
+CREATE DATABASE spendlog CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'spendlog'@'localhost' IDENTIFIED BY 'CHOOSE_A_PASSWORD';
+GRANT ALL PRIVILEGES ON spendlog.* TO 'spendlog'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+## 3. App
+
+```bash
+sudo mkdir -p /var/www/spendlog && sudo chown $USER:www-data /var/www/spendlog
+git clone git@github.com:koeuk/spendlog.git /var/www/spendlog
+cd /var/www/spendlog
+
+cp deploy/env.production.example .env   # then edit: domain, DB password
+composer install --no-dev --optimize-autoloader
+npm ci && npm run build
+
+php artisan key:generate
+php artisan migrate --force
+php artisan db:seed --force            # seeds roles/permissions + admin user
+php artisan storage:link
+php artisan optimize
+
+# Laravel only writes here; group-write for www-data.
+sudo chgrp -R www-data storage bootstrap/cache
+sudo chmod -R g+w storage bootstrap/cache
+```
+
+## 4. Nginx + HTTPS
+
+```bash
+sudo cp deploy/nginx.conf /etc/nginx/sites-available/spendlog
+sudo nano /etc/nginx/sites-available/spendlog   # replace YOUR_DOMAIN
+sudo ln -s /etc/nginx/sites-available/spendlog /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d YOUR_DOMAIN
+```
+
+## 5. Later deploys
+
+Run the **Deploy** workflow from the repo's Actions tab (or push to main once
+the automatic trigger is enabled in `.github/workflows/deploy.yml`). The
+workflow SSHes in and runs pull → install → build → migrate → cache itself.

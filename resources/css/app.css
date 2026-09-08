@@ -1,0 +1,498 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@import 'tailwindcss';
+@import "tw-animate-css";
+@plugin '@tailwindcss/forms';
+
+/* Both are outside the auto-detected sources (gitignored / in vendor). */
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * The UI kit is written with data-open:/data-closed: animation classes, but
+ * reka-ui marks state as data-state="open|closed" — and Tailwind's built-in
+ * data-open: variant matches a bare [data-open] attribute that never appears.
+ * Without these two lines every dialog and popover "animation" silently never
+ * runs; the components pop in and out unstyled.
+ */
+@custom-variant data-open (&[data-state='open']);
+@custom-variant data-closed (&[data-state='closed']);
+
+:root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+}
+
+.dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+}
+
+@theme inline {
+    --font-sans: 'Inter', 'Figtree', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+
+    --color-background: hsl(var(--background));
+    --color-foreground: hsl(var(--foreground));
+    --color-card: hsl(var(--card));
+    --color-card-foreground: hsl(var(--card-foreground));
+    --color-popover: hsl(var(--popover));
+    --color-popover-foreground: hsl(var(--popover-foreground));
+    --color-primary: hsl(var(--primary));
+    --color-primary-foreground: hsl(var(--primary-foreground));
+    --color-secondary: hsl(var(--secondary));
+    --color-secondary-foreground: hsl(var(--secondary-foreground));
+    --color-muted: hsl(var(--muted));
+    --color-muted-foreground: hsl(var(--muted-foreground));
+    --color-accent: hsl(var(--accent));
+    --color-accent-foreground: hsl(var(--accent-foreground));
+    --color-destructive: hsl(var(--destructive));
+    --color-destructive-foreground: hsl(var(--destructive-foreground));
+    --color-border: hsl(var(--border));
+    --color-input: hsl(var(--input));
+    --color-ring: hsl(var(--ring));
+    --color-chart-1: hsl(var(--chart-1));
+    --color-chart-2: hsl(var(--chart-2));
+    --color-chart-3: hsl(var(--chart-3));
+    --color-chart-4: hsl(var(--chart-4));
+    --color-chart-5: hsl(var(--chart-5));
+
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 4px);
+    --font-heading: var(--font-sans);
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+
+    /*
+     * Tailwind v4's Preflight sets `cursor: default` on buttons, so every
+     * button in the app looks unclickable. Restore the pointer here rather than
+     * adding `cursor-pointer` to each component — this also catches buttons we
+     * don't author, like the ones Sonner and reka-ui render internally.
+     *
+     * Kept in @layer base on purpose: utilities beat base, so a component that
+     * deliberately opts out with `cursor-default` (select items, calendar cells)
+     * still wins.
+     */
+    button:not(:disabled),
+    [role='button']:not([aria-disabled='true']),
+    summary {
+        cursor: pointer;
+    }
+
+    /*
+     * Disabled buttons mostly carry `disabled:pointer-events-none`, which stops
+     * any cursor from showing at all. This is for the ones that don't.
+     */
+    button:disabled,
+    [role='button'][aria-disabled='true'] {
+        cursor: not-allowed;
+    }
+}
+
+/*
+ * The silver preset's opaque cards.
+ *
+ * Every card surface is bg-card/70 — a 70% glass that frosts the ambient wash
+ * behind it. The silver preset turns that wash off (plainBackground), so there
+ * is nothing left to frost and the translucency only tints the white card
+ * silver. Under .solid-cards — set for that preset alone, light mode only, by
+ * the pre-paint script and useBrandColors — the fill goes fully opaque, so
+ * --card's pure white reads as white.
+ *
+ * Unlayered on purpose: Tailwind's utilities sit in a cascade layer, and an
+ * unlayered rule beats a layered one whatever the specificity — so this wins
+ * over bg-card/70 with no !important and no specificity war. The attribute
+ * selector matches the literal `bg-card/70` class token without escaping the
+ * slash.
+ */
+html.solid-cards [class~='bg-card/70'] {
+    background-color: hsl(var(--card));
+}
+
+/*
+ * Staggered entrance used across the auth screens and the app shell.
+ * Set the offset per element with style="--d: 120ms".
+ */
+@layer components {
+    .anim {
+        animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: var(--d, 0ms);
+    }
+}
+
+/*
+ * The ambient wash, flowing — the ABA-style aurora.
+ *
+ * Each blob rides a closed loop (a soft ellipse traced by four waypoints, so
+ * 100% lands exactly back on 0% and the cycle never hitches) while swelling
+ * and shrinking on the way round. One runs clockwise, the other counter, on
+ * different clocks set per element with --wash-duration / --wash-delay — the
+ * colours visibly glide over and past each other instead of holding position.
+ *
+ * Transform only: the blobs are huge blurred layers, and translate/scale
+ * composites on the GPU where animating position or filter would repaint
+ * them every frame. linear timing, because easing a closed loop makes it
+ * pulse at the seams; the waypoints themselves provide the sway.
+ */
+@layer components {
+    .wash-blob {
+        animation: wash-flow var(--wash-duration, 22s) linear infinite both;
+        animation-delay: var(--wash-delay, 0s);
+    }
+
+    .wash-blob-reverse {
+        animation-name: wash-flow-reverse;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .wash-blob,
+        .wash-blob-reverse {
+            animation: none;
+        }
+    }
+}
+
+@keyframes wash-flow {
+    0% {
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+    25% {
+        transform: translate3d(14rem, 8rem, 0) scale(1.25);
+    }
+    50% {
+        transform: translate3d(22rem, -5rem, 0) scale(1.1);
+    }
+    75% {
+        transform: translate3d(8rem, -12rem, 0) scale(0.85);
+    }
+    100% {
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+}
+
+@keyframes wash-flow-reverse {
+    0% {
+        transform: translate3d(0, 0, 0) scale(1.1);
+    }
+    25% {
+        transform: translate3d(-12rem, 10rem, 0) scale(0.88);
+    }
+    50% {
+        transform: translate3d(-20rem, -3rem, 0) scale(1.22);
+    }
+    75% {
+        transform: translate3d(-6rem, -11rem, 0) scale(1.02);
+    }
+    100% {
+        transform: translate3d(0, 0, 0) scale(1.1);
+    }
+}
+
+@keyframes rise {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/*
+ * The pushed form screen arriving, on phones only.
+ *
+ * FormScreenLayout says these are pushed over the tab bar the way a native app
+ * pushes a detail screen; this is that push. Without it a full-screen route
+ * change is a hard cut, and a hard cut from a list to a form reads as a new
+ * page rather than as a step deeper into the one you were on.
+ *
+ * Entry only. Inertia has torn the old page out of the DOM before the new one
+ * mounts, so there is nothing left to slide out behind this — an exit half
+ * would need the View Transitions API and a fallback for the browsers without
+ * it, which is a lot of machinery for the half nobody watches.
+ *
+ * Short, and lighter on the travel than the eye expects: the distance sells the
+ * direction, the fade does the rest, and anything longer is felt as lag on a
+ * screen the user is trying to type into. Only transform and opacity, so it
+ * composites on the GPU and never lays out the sticky header again.
+ */
+@layer components {
+    .screen-push {
+        animation: screen-push 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+}
+
+@keyframes screen-push {
+    from {
+        opacity: 0;
+        transform: translateX(24px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/*
+ * The over-budget mark: a slow breath, plus a ring leaving it.
+ *
+ * Deliberately slow and small. This sits on every page for as long as the month
+ * is over, so it has to survive being looked at all day — a fast or wide pulse
+ * reads as an emergency for the first minute and as noise ever after.
+ *
+ * Only transform and opacity move, so it composites on the GPU and never asks
+ * the sticky bar above it to lay out again.
+ */
+@layer components {
+    .alert-breathe {
+        animation: alert-breathe 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    .alert-ring {
+        animation: alert-ring 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+    }
+}
+
+@keyframes alert-breathe {
+    0%,
+    100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+@keyframes alert-ring {
+    0% {
+        opacity: 0.45;
+        transform: scale(0.85);
+    }
+    /* Gone well before the cycle ends: the pause is what keeps it a heartbeat
+       rather than a spinner. */
+    70%,
+    100% {
+        opacity: 0;
+        transform: scale(1.9);
+    }
+}
+
+/*
+ * Bottom-sheet mode for <SelectContent />, on below sm.
+ *
+ * On for every select by default (see the prop in SelectContent.vue), so a
+ * dropdown never opens over its own trigger on a phone.
+ *
+ * !important throughout, reluctantly. reka measures the trigger and writes the
+ * wrapper's position/height/margin as *inline* styles, which no class can beat
+ * on specificity. The wrapper carries no class or data attribute of its own, so
+ * it is reached through the content that it holds.
+ */
+@keyframes select-sheet-in {
+    from {
+        transform: translateY(100%);
+    }
+}
+
+@keyframes select-sheet-out {
+    to {
+        transform: translateY(100%);
+    }
+}
+
+@keyframes select-scrim-in {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes select-scrim-out {
+    to {
+        opacity: 0;
+    }
+}
+
+@media (max-width: 639px) {
+    div:has(> [data-slot='select-content'][data-mobile-sheet]) {
+        position: fixed !important;
+        top: auto !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        /* Height and min-height are sized to the trigger by reka; here the
+           panel is as tall as its content instead, up to the cap below. */
+        height: auto !important;
+        min-height: 0 !important;
+        /* dvh, not vh: with the browser chrome showing, 75vh on mobile Safari
+           reaches past the bottom of what is actually on screen. */
+        max-height: 75dvh !important;
+        margin: 0 !important;
+    }
+
+    /*
+     * The slide rides on the wrapper, not the content. The content's own class
+     * list carries `data-[align-trigger=true]:animate-none` — trigger-aligned
+     * content is positioned by measurement, so upstream turns its animation off
+     * — which is why the panel currently just appears. The wrapper is outside
+     * that rule and free to move.
+     *
+     * The easing is the standard sheet curve: leaves quickly, settles slowly,
+     * no overshoot. A plain ease-out reads as sluggish over this distance.
+     */
+    div:has(> [data-slot='select-content'][data-mobile-sheet][data-state='open']) {
+        animation: select-sheet-in 300ms cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    /* Shorter on the way out. reka's Presence keeps the node mounted until the
+       animation ends, so this plays in full rather than being cut off. */
+    div:has(
+            > [data-slot='select-content'][data-mobile-sheet][data-state='closed']
+        ) {
+        animation: select-sheet-out 200ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    }
+
+    /* The scrim. A pseudo-element rather than a real overlay node, since the
+       select has no overlay of its own to hang one off. z-index is safe to take
+       negative: the wrapper sets z-index 50 and so opens its own stacking
+       context, which this cannot escape upwards through. */
+    div:has(> [data-slot='select-content'][data-mobile-sheet])::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background: rgb(0 0 0 / 0.5);
+    }
+
+    /* Fades on its own timing rather than sliding with the panel — a scrim that
+       travels with the sheet looks like it is attached to it. */
+    div:has(> [data-slot='select-content'][data-mobile-sheet][data-state='open'])::before {
+        animation: select-scrim-in 300ms ease-out;
+    }
+
+    div:has(
+            > [data-slot='select-content'][data-mobile-sheet][data-state='closed']
+        )::before {
+        animation: select-scrim-out 200ms ease-in forwards;
+    }
+
+    [data-slot='select-content'][data-mobile-sheet] {
+        max-height: 75dvh !important;
+        border-radius: 1rem 1rem 0 0;
+        /* Clear of the home indicator, so the last row is not half under it. */
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* Comfortable to hit with a thumb. The desktop row is built for a cursor,
+       so every side is reset: the inherited pl-2/pr-8 leaves the label hard
+       against the left edge and is nowhere near a 44px target vertically. */
+    [data-slot='select-content'][data-mobile-sheet] [data-slot='select-item'] {
+        min-height: 3.5rem;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        /* Right stays wider than left: the check mark sits in that gutter. */
+        padding-left: 1.25rem;
+        padding-right: 2.75rem;
+    }
+
+    /* The rows carry their own spacing now, so the viewport's own padding is
+       only there to keep the first and last from touching the panel edges. */
+    /* reka's own attribute — the viewport carries no data-slot of its own. */
+    [data-slot='select-content'][data-mobile-sheet] [data-reka-select-viewport] {
+        padding: 0.5rem;
+    }
+
+    /* Balances the wider row padding; at the inherited right-2 the tick sits
+       almost against the panel edge while the label starts 1.25rem in. */
+    [data-slot='select-content'][data-mobile-sheet]
+        [data-slot='select-item']
+        > span:first-child {
+        right: 1.25rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .anim {
+        animation: none;
+    }
+
+    /* The screen still arrives, it just does not travel to get there. */
+    .screen-push {
+        animation: none;
+    }
+
+    /* The sheet still docks to the bottom, it just gets there instantly. */
+    div:has(> [data-slot='select-content'][data-mobile-sheet]),
+    div:has(> [data-slot='select-content'][data-mobile-sheet])::before {
+        animation: none !important;
+    }
+
+    /* The icon still says what it says without moving. */
+    .alert-breathe,
+    .alert-ring {
+        animation: none;
+    }
+
+    .alert-ring {
+        opacity: 0;
+    }
+}

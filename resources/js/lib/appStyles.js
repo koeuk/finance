@@ -1,0 +1,286 @@
+/**
+ * The in-app counterpart to authStyles.js — same vocabulary as the login
+ * screens (Plus Jakarta display face, neutral base, one green accent, 28px
+ * corners) so the app does not read as a different product after sign-in.
+ *
+ * Spelled out in full: Tailwind scans source text, so a class assembled at
+ * runtime would never be generated.
+ */
+
+/**
+ * Page shell. Matches AUTH_PAGE, plus `relative` + `isolate` so the ambient
+ * wash below sits behind the content without escaping the stacking context.
+ */
+export const APP_PAGE =
+    // bg-background, not bg-white: the shell covers the whole viewport, so a
+    // literal white here paints straight over the admin's body colour and the
+    // setting silently does nothing. The token resolves to the same white and
+    // near-black by default, so this changes nothing until a colour is chosen.
+    // text-foreground, not text-neutral-900: the page colour is derived, so the
+    // text on it has to be too, or a dark background keeps near-black body copy.
+    'relative isolate min-h-screen bg-background font-display text-foreground';
+
+/**
+ * The hover lift, shared by every card so they all rise the same way.
+ *
+ * Shadow only — the card does not move. A shadow alone still says "this is the
+ * one under the pointer", and nothing shifts under the cursor while you read.
+ *
+ * Two layers, as real light casts: a wide soft one for the throw and a tight
+ * dark one for the contact edge. A single big blur alone just looks like fog
+ * under the card. Negative spread keeps the throw from bleeding sideways —
+ * under a translucent pane, any spill shows *through* the neighbouring card.
+ *
+ * The curve is the same cubic-bezier the .anim entrance uses: it moves most of
+ * the way early then settles, so the shadow fades up and away rather than
+ * snapping off a linear ramp. 300ms in, and a slightly longer 400ms out — a
+ * lift that leaves as fast as it arrives feels snatched away.
+ */
+// Exported as well as composed into CARD: panels that are not cards — the
+// permission groups, say — still want the same lift, and duplicating the shadow
+// would let the two drift apart.
+export const CARD_LIFT =
+    'transition-shadow duration-[400ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:duration-300 ' +
+    'hover:shadow-[0_16px_36px_-16px_rgba(15,23,42,0.10),0_4px_12px_-6px_rgba(15,23,42,0.05)] ' +
+    'dark:hover:shadow-[0_16px_36px_-16px_rgba(0,0,0,0.45),0_4px_12px_-6px_rgba(0,0,0,0.3)]';
+
+/**
+ * The glass surface.
+ *
+ * Frosted glass is only frosted if something shows through it — on a flat white
+ * page a blurred card is indistinguishable from an opaque one. So this pairs
+ * with the ambient wash rendered by the layout: translucent fill + backdrop
+ * blur to bend it.
+ *
+ * The edge does the work at rest, not a shadow: a page of stacked cards each
+ * casting its own drop shadow reads as clutter, where one hairline border per
+ * card stays quiet. Depth is spent on hover instead, where it means something —
+ * the card lifts to say it is the one under the pointer.
+ *
+ * Only `shadow` transitions. Animating the border or a transform would make a
+ * long list shimmer as the pointer crosses it, and `transition-all` here would
+ * also animate the backdrop filter, which is expensive on every card at once.
+ */
+export const CARD =
+    // bg-card/border-border, not literal white: a translucent *white* card over a
+    // tinted page is just a washed-out patch of that tint. The tokens are derived
+    // from the background, so the card sits a measured step off it in the same
+    // hue — and still resolve to today's white and near-black by default.
+    `rounded-[28px] border border-border bg-card/70 backdrop-blur-xl backdrop-saturate-150 ${CARD_LIFT}`;
+
+/**
+ * The hero card — the admin's button colour at full strength, for the one figure
+ * on a page that outranks the rest.
+ *
+ * This was a pale wash of a hardcoded green. Two things were wrong with it: it
+ * stayed green while the buttons around it moved to whatever an admin picked,
+ * and at 7% over a translucent backdrop the ambient wash showed straight
+ * through, so the card read as a faint gradient rather than a colour.
+ *
+ * Opaque, so nothing bleeds through, and no backdrop blur — there is nothing
+ * behind an opaque fill to bend, and the filter would cost a compositor layer
+ * for no visible effect. Identical in construction to CARD_BRAND; the two are
+ * kept apart only because this one is a data surface and that one is the app
+ * speaking.
+ *
+ * Every child has to take --primary-foreground, or one of the ON_BRAND helpers
+ * below. The token is *computed* for contrast against whatever fill is chosen,
+ * so it is the only text colour that survives both a near-black default and a
+ * deep green. Anything spelled out — a muted grey, a red delta — is unreadable
+ * the moment the fill is dark.
+ */
+export const CARD_TINT = 'rounded-[28px] bg-primary text-primary-foreground';
+
+/**
+ * The muted and figure treatments, restated for a brand fill.
+ *
+ * Opacity rather than a second colour: --primary-foreground is the one value
+ * known to contrast with the fill, so the hierarchy has to be built by fading it
+ * rather than by reaching for a grey that was computed against the page
+ * background instead.
+ */
+export const EYEBROW_ON_BRAND =
+    'text-[11px] font-semibold uppercase tracking-[0.12em] text-primary-foreground/75';
+
+export const FIGURE_ON_BRAND =
+    'font-extrabold tracking-[-0.03em] tabular-nums text-primary-foreground';
+
+export const MUTED_ON_BRAND = 'text-primary-foreground/75';
+
+/**
+ * CARD_TINT's alarm state — same glass, red — for a message the page needs read
+ * before the numbers under it.
+ *
+ * No CARD_LIFT: everything else that lifts is a thing you click, and lifting
+ * under the pointer would promise an action this does not have. Red is spelled
+ * out for both themes rather than taken from --destructive, which is a *fill*
+ * for buttons: at 70% opacity behind text it is a solid red slab, not a wash.
+ */
+export const CARD_ALERT =
+    'rounded-[28px] border border-red-500/20 bg-red-50/70 backdrop-blur-xl backdrop-saturate-150 ' +
+    'dark:border-red-500/25 dark:bg-red-950/40';
+
+/**
+ * CARD's branded sibling — the same glass, washed with the admin's button
+ * colour, for a block that should read as the app speaking rather than as
+ * another data card.
+ *
+ * --primary, not a literal: this is the one surface meant to carry the brand,
+ * so it has to move when an admin picks a colour instead of pinning a hue the
+ * rest of the app no longer uses.
+ *
+ * The fill at full strength, the same depth the primary button wears — this
+ * block is the app talking, and a 10% wash of it read as a smudge rather than a
+ * deliberate colour. Which means every child has to take
+ * --primary-foreground: the token is *computed* for contrast against whatever
+ * fill an admin picks, so it is the only text colour guaranteed to survive a
+ * near-black default and a deep green alike. Anything spelled out here (the
+ * amber this block used to carry) is unreadable the moment the fill is dark.
+ *
+ * No backdrop blur, unlike CARD: the fill is opaque, so there is nothing behind
+ * it to bend and the filter would cost a compositor layer for no visible effect.
+ *
+ * No dark: variant, and no CARD_LIFT — matching ACTIVE and CARD_ALERT
+ * respectively. --primary is already theme-aware, and nothing here is clickable.
+ */
+export const CARD_BRAND =
+    'rounded-[28px] bg-primary text-primary-foreground';
+
+/**
+ * A lighter pane for nested surfaces (modals, popovers) that sit above a card
+ * and would otherwise blur an already-blurred layer — stacking backdrop filters
+ * costs a lot and muddies both.
+ */
+export const CARD_SOLID =
+    'rounded-[28px] border border-border bg-popover';
+
+/**
+ * The fill for the selected one of a set — the active nav tab, the chosen
+ * segment, the current settings page.
+ *
+ * The token, not a literal: it tracks the admin's button colour, so choosing a
+ * brand colour moves every one of these at once instead of leaving black pills
+ * scattered around a red app.
+ *
+ * No dark: variant, deliberately. --primary is already theme-aware on its own —
+ * near-black on white, near-white on near-black — and once a brand colour is set
+ * it is a single value that belongs in both. A dark: override here would fight
+ * both cases.
+ */
+export const ACTIVE = 'bg-primary text-primary-foreground';
+
+/** Muted body copy. Derived to clear AA on the card it sits on. */
+export const MUTED = 'text-muted-foreground';
+
+/** The green accent, matching AUTH_LINK. */
+export const ACCENT = 'text-[#4b9d5f] dark:text-[#6cc182]';
+
+/** Section label above a card's content. */
+export const EYEBROW =
+    'text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground';
+
+/** The big number a card exists to show. */
+export const FIGURE =
+    'font-extrabold tracking-[-0.03em] tabular-nums text-foreground';
+
+/**
+ * A settings form's submit / cancel button.
+ *
+ * Full width on a phone, back to its content width from sm: up. A settings card
+ * at 430px is a single column, so a button sized to the word "Save" leaves most
+ * of the row as dead space that reads as part of the control and is not; from
+ * 640px the card is wide enough that the same button spanning it reads as a
+ * stripe instead. The breakpoint is where the card stops being the screen.
+ *
+ * The 12px radius is softer than the button's own 6px default, so a corner
+ * spanning the full width of a 28px card does not sit square against it. It
+ * holds at every width rather than reverting from sm: up: settings buttons
+ * changing shape at the breakpoint is a difference nobody asked for, and the
+ * header actions (SETTINGS_ACTION) are the same radius at every width too.
+ *
+ * h-12 rather than the size variant's own 44px phone floor: this is the action
+ * the page exists for, and it is the one control on the card that should be
+ * hard to miss.
+ *
+ * Spelled out in full: Tailwind scans source text, so a class assembled at
+ * runtime would never be generated. The Button component merges this through
+ * cn(), so the radius here wins over the one baked into the size variant.
+ */
+export const FORM_ACTION = 'w-full max-sm:h-12 rounded-xl sm:w-auto';
+
+/**
+ * FORM_ACTION's compact sibling — the "Add entry" / "Add user" button beside a
+ * settings heading.
+ *
+ * Same radius, no width: this one sits in a row next to text and has to stay
+ * its own size at every width, so it takes the corner and nothing else.
+ */
+export const SETTINGS_ACTION = 'rounded-xl';
+
+/** Compact pill button, e.g. "Add expense" in a page header. */
+export const PILL_ACTION =
+    'h-10 rounded-full px-4 text-sm font-semibold active:translate-y-0 active:scale-[0.99]';
+
+/**
+ * Widens a small icon button's hit area to 44px without resizing it.
+ *
+ * An invisible centred pseudo-element, so the control keeps the size the layout
+ * was designed around — several of these sit in dense rows where a genuinely
+ * 44px button would push the row apart — while a fingertip still gets the area
+ * it needs. The pseudo carries no paint, so hover and focus rings continue to
+ * describe the visible button rather than a larger invisible box.
+ *
+ * Only for controls with room around them. Two of these placed side by side
+ * inside 44px of each other overlap, and the one later in the DOM silently wins
+ * the tap — which on an up/down pair means the arrow you did not press. Adjacent
+ * pairs get real size and real spacing instead.
+ */
+export const TAP_TARGET =
+    "relative after:absolute after:left-1/2 after:top-1/2 after:size-11 " +
+    "after:-translate-x-1/2 after:-translate-y-1/2 after:content-['']";
+
+/**
+ * A quiet outline pill for a secondary action beside a heading — the PDF and
+ * Excel downloads on Reports.
+ *
+ * Sizeless: the page header uses a taller pill than the one tucked into the
+ * expenses card, so the caller adds its own height and padding.
+ *
+ * Hover fills with ACTIVE — the same --primary the selected nav tab and the
+ * chosen period segment wear — and the fill rises from the bottom edge rather
+ * than cross-fading in place, so the pill reads as filling up. A pill this small
+ * cannot rely on an opacity step (70% to solid is a change you have to already
+ * be looking for), and reusing the selected-state fill means the page has one
+ * colour for "this one", whether it is chosen or merely under the pointer.
+ *
+ * Spelled out rather than interpolating ACTIVE: Tailwind scans source text, so
+ * `hover:${ACTIVE}` would compile to classes that were never generated. The
+ * token still tracks the admin's button colour, so this follows a brand colour
+ * instead of pinning green.
+ *
+ * Eased on the same curve as CARD_LIFT, and asymmetric for the same reason: in
+ * over 200ms, out over 300, so it settles rather than snapping off Tailwind's
+ * bare `transition` (a 150ms linear ramp).
+ *
+ * transition-colors, not transition-all: only fill, border and text move, and
+ * animating everything would drag the backdrop blur behind it on every pointer
+ * pass.
+ */
+export const EXPORT_LINK =
+    'inline-flex items-center gap-1.5 rounded-full border border-border bg-card/70 ' +
+    'text-xs font-semibold text-foreground ' +
+    // The fill is a background *image* — a flat primary-to-primary gradient — so
+    // bg-card/70 stays underneath as the background *colour* and the two do not
+    // fight. Pinned to the bottom edge at zero height, it grows upward on hover.
+    'bg-[linear-gradient(to_top,var(--color-primary),var(--color-primary))] ' +
+    'bg-[length:100%_0%] bg-bottom bg-no-repeat ' +
+    'transition-[background-size,color,border-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ' +
+    'hover:border-primary hover:bg-[length:100%_100%] hover:text-primary-foreground hover:duration-200';
+
+/** A segmented control (Mine/Everyone, EN/KM). */
+export const SEGMENT =
+    'inline-flex rounded-full border border-border bg-muted p-0.5';
+
+export const SEGMENT_ON = `rounded-full ${ACTIVE}`;
+export const SEGMENT_OFF =
+    'rounded-full text-muted-foreground hover:text-foreground';
